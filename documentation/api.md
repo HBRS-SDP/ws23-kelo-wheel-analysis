@@ -1,7 +1,5 @@
 # Table of Contents
 
-# Table of Contents
-
 - [Modified Kelo Tulip Package API](#modified-kelo-tulip-package-api)
   - [publishWheelDiag](#publishwheeldiag)
     - [Description](#description)
