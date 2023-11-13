@@ -8,7 +8,7 @@
     - [Return Value](#return-value)
     - [ROS Topics](#ros-topics)
     - [Custom Data Structures](#custom-data-structures)
-  - [Wheel Diagnostic Data Visualizer](#wheel-diagnostic-data-visualizer)
+- [Wheel Diagnostic Data Visualizer](#wheel-diagnostic-data-visualizer)
     - [Description](#description-1)
     - [Syntax](#syntax-1)
     - [Parameters](#parameters-1)
