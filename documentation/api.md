@@ -115,6 +115,44 @@ This function does not return a value. It publishes a WheelDiag message for each
   - current_in
 
 
+### Wheel 1:
+
+- **status1**: Status information 1.
+- **status2**: Status information 2.
+- **sensor_ts**: Timestamp of the sensor data.
+- **setpoint_ts**: Timestamp of the setpoint.
+- **encoder_1**: Encoder data for wheel 1.
+- **velocity_1**: Velocity data for wheel 1.
+- **current_1_d**: Current component *d* for wheel 1.
+- **current_1_q**: Current component *q* for wheel 1.
+- **current_1_u**: Current component *u* for wheel 1.
+- **current_1_v**: Current component *v* for wheel 1.
+- **current_1_w**: Current component *w* for wheel 1.
+- **voltage_1**: Voltage for wheel 1.
+
+### Wheel 2:
+
+- **encoder_2**: Encoder data for wheel 2.
+- **velocity_2**: Velocity data for wheel 2.
+- **current_2_d**: Current component *d* for wheel 2.
+- **current_2_q**: Current component *q* for wheel 2.
+- **current_2_u**: Current component *u* for wheel 2.
+- **current_2_v**: Current component *v* for wheel 2.
+- **current_2_w**: Current component *w* for wheel 2.
+- **voltage_2**: Voltage for wheel 2.
+
+### Pivot:
+
+- **encoder_pivot**: Encoder data for the pivot.
+- **velocity_pivot**: Velocity data for the pivot.
+
+### General:
+
+- **voltage_bus**: Bus voltage.
+- **imu_ts**: Timestamp for IMU data.
+
+
+
 # Wheel Diagnostic Data Visualizer
 
 The Wheel Diagnostic Data Visualizer is a Python program designed to provide a user-friendly interface for visualizing and analyzing wheel diagnostic data obtained from ROS bag files. It leverages the `load_rosbag` function to import data, allowing users to explore and interpret information related to the Kelo Tulip package's wheel configurations.
