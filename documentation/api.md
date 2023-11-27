@@ -131,8 +131,7 @@ def is_loss_contact(WheelDiag: topic) -> bool:
 ## Example
 
 ```python
-WheelDiag = load_rosbag(file_path)
-loss = is_loss_structure(WheelDiag)
+loss = is_loss_contact(WheelDiag)
 print(loss)
 ```
 This will print True if there is a loss in the wheel contact and False otherwise. Replace 'sensor1' and 'threshold' with the actual sensor and threshold values once they are determined.
