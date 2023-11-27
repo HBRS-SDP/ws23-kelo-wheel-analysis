@@ -8,6 +8,12 @@
     - [Return Value](#return-value)
     - [ROS Topics](#ros-topics)
     - [Custom Data Structures](#custom-data-structures)
+  - [is_loss_contact](#is_loss_contact)
+    - [Description](#description-is_loss_contact)
+    - [Syntax](#syntax-is_loss_contact)
+    - [Parameters](#parameters-3)
+    - [Return Value](#return-value-is_loss_contact)
+    - [Example](#example-is_loss_contact)
 - [Wheel Diagnostic Data Visualizer](#wheel-diagnostic-data-visualizer)
     - [Description](#description-1)
     - [Syntax](#syntax-1)
@@ -20,31 +26,12 @@
     - [Parameters](#parameters-3)
     - [Return Value](#return-value-3)
     - [Example](#example-3)
-  - [Save to CSV](#save-to-csv)
-    - [Description](#description-2)
-    - [Syntax](#syntax-2)
-    - [Parameters](#parameters-2)
-    - [Return Value](#return-value-2)
-    - [Example](#example-2)
   - [Plot Data](#plot-data)
     - [Description](#description-3)
     - [Syntax](#syntax-3)
     - [Parameters](#parameters-3)
     - [Return Value](#return-value-3)
     - [Example](#example-3)
-  - [play_data](#play_data)
-    - [Description](#description-4)
-    - [Syntax](#syntax-4)
-    - [Parameters](#parameters-4)
-    - [Seeker Visualization](#seeker-visualization)
-    - [Return Value](#return-value-4)
-    - [Example](#example-4)
-  - [create_label](#create_label)
-    - [Description](#description-5)
-    - [Syntax](#syntax-5)
-    - [Parameters](#parameters-5)
-    - [Visualization](#visualization)
-    - [Example](#example-5)
 
 # Modified Kelo Tulip Package API
 
@@ -71,87 +58,86 @@ This function does not return a value. It publishes a WheelDiag message for each
 
 ### Custom Data Structures
 
-- **WheelDiag**: This is a custom ROS message used to publish wheel diagnostic data. It contains the following fields:
-  - status1
-  - status2
-  - sensor_ts
-  - setpoint_ts
-  - encoder_1
-  - velocity_1
-  - current_1_d
-  - current_1_q
-  - current_1_u
-  - current_1_v
-  - current_1_w
-  - voltage_1
-  - voltage_1_u
-  - voltage_1_v
-  - voltage_1_w
-  - temperature_1
-  - encoder_2
-  - velocity_2
-  - current_2_d
-  - current_2_q
-  - current_2_u
-  - current_2_v
-  - current_2_w
-  - voltage_2
-  - voltage_2_u
-  - voltage_2_v
-  - voltage_2_w
-  - temperature_2
-  - encoder_pivot
-  - velocity_pivot
-  - voltage_bus
-  - imu_ts
-  - accel_x
-  - accel_y
-  - accel_z
-  - gyro_x
-  - gyro_y
-  - gyro_z
-  - temperature_imu
-  - pressure
-  - current_in
+#### Wheel 1:
 
+- **status1**: Status bits as defined in STAT1_
+- **status2**: Status bits as defined in STAT2_
+- **sensor_ts**: EtherCAT timestamp (ns) on sensor acquisition 
+- **setpoint_ts**: EtherCAT timestamp (ns) of last setpoint data
+- **encoder_1**: Encoder 1 value in rad (no wrapping at 2PI)
+- **velocity_1**: Encoder 1 velocity in rad/s
+- **current_1_d**: Motor 1 current direct in amp
+- **current_1_q**: Motor 1 current quadrature in amp
+- **current_1_u**: Motor 1 current phase U in amp
+- **current_1_v**: Motor 1 current phase V in amp
+- **current_1_w**: Motor 1 current phase W in amp
+- **voltage_1**: Motor 1 voltage from pwm in volts
+- **voltage_1_u**: Motor 1 voltage from phase U in volts
+- **voltage_1_v**: Motor 1 voltage from phase V in volts
+- **voltage_1_w**: Motor 1 voltage from phase W in volts
+- **temperature_1**: Motor 1 estimated temperature in K
 
-### Wheel 1:
+#### Wheel 2:
 
-- **status1**: Status information 1.
-- **status2**: Status information 2.
-- **sensor_ts**: Timestamp of the sensor data.
-- **setpoint_ts**: Timestamp of the setpoint.
-- **encoder_1**: Encoder data for wheel 1.
-- **velocity_1**: Velocity data for wheel 1.
-- **current_1_d**: Current component *d* for wheel 1.
-- **current_1_q**: Current component *q* for wheel 1.
-- **current_1_u**: Current component *u* for wheel 1.
-- **current_1_v**: Current component *v* for wheel 1.
-- **current_1_w**: Current component *w* for wheel 1.
-- **voltage_1**: Voltage for wheel 1.
+- **encoder_2**: Encoder 2 value in rad (no wrapping at 2PI)
+- **velocity_2**: Encoder 2 velocity in rad/s
+- **current_2_d**: Motor 2 current direct in amp
+- **current_2_q**: Motor 2 current quadrature in amp
+- **current_2_u**: Motor 2 current phase U in amp
+- **current_2_v**: Motor 2 current phase V in amp
+- **current_2_w**: Motor 2 current phase W in amp
+- **voltage_2**: Motor 2 voltage from pwm in volts
+- **voltage_2_u**: Motor 2 voltage from phase U in volts
+- **voltage_2_v**: Motor 2 voltage from phase V in volts
+- **voltage_2_w**: Motor 2 voltage from phase W in volts
+- **temperature_2**: Motor 2 estimated temperature in K
 
-### Wheel 2:
+#### Pivot:
 
-- **encoder_2**: Encoder data for wheel 2.
-- **velocity_2**: Velocity data for wheel 2.
-- **current_2_d**: Current component *d* for wheel 2.
-- **current_2_q**: Current component *q* for wheel 2.
-- **current_2_u**: Current component *u* for wheel 2.
-- **current_2_v**: Current component *v* for wheel 2.
-- **current_2_w**: Current component *w* for wheel 2.
-- **voltage_2**: Voltage for wheel 2.
+- **encoder_pivot**: Encoder pivot value in rad (wrapping at -PI and +PI)
+- **velocity_pivot**: Encoder pivot velocity in rad/s
 
-### Pivot:
+#### General:
 
-- **encoder_pivot**: Encoder data for the pivot.
-- **velocity_pivot**: Velocity data for the pivot.
+- **voltage_bus**: Bus voltage in volts
+- **imu_ts**: EtherCAT timestamp (ns) of IMU sensor acquisition
+- **accel_x**: IMU accelerometer X-axis in m/s2
+- **accel_y**: IMU accelerometer Y-axis in m/s2
+- **accel_z**: IMU accelerometer Z-axis in m/s2
+- **gyro_x**: IMU gyro X-axis in rad/s
+- **gyro_y**: IMU gyro Y-axis in rad/s
+- **gyro_z**: IMU gyro Z-axis in rad/s
+- **temperature_imu**: IMU temperature in K	
+- **pressure**: Barometric pressure in Pa absolute
+- **current_in**: Current input
 
-### General:
+# is_loss_contact
 
-- **voltage_bus**: Bus voltage.
-- **imu_ts**: Timestamp for IMU data.
+## Description
 
+The `is_loss_contact` function is designed to detect a loss in the wheel contact based on the sensor data from the WheelDiag topic. The specific sensor data and threshold for wheel loss detection are still to be determined (TBD).
 
+## Syntax
+
+```python
+def is_loss_contact(WheelDiag: topic) -> bool:
+```
+
+## Parameters:
+    WheelDiag (topic): The WheelDiag topic data.
+
+### Return Value:
+    bool: True if there is a loss in the wheel contact, False otherwise.
+## Example
+
+```python
+WheelDiag = load_rosbag(file_path)
+loss = is_loss_structure(WheelDiag)
+print(loss)
+```
+This will print True if there is a loss in the wheel contact and False otherwise. Replace 'sensor1' and 'threshold' with the actual sensor and threshold values once they are determined.
+
+Please note that the function is currently checking for a placeholder condition as the specific sensor data and threshold for wheel loss detection are still to be determined (TBD).
 
 # Wheel Diagnostic Data Visualizer
 
@@ -205,7 +191,7 @@ def load_rosbag(file_path: str) -> dict:
             'sensor_data': {
                 'sensor1': [list of sensor1 values],
                 'sensor2': [list of sensor2 values],
-                # Add more sensors as needed
+                # More sensors
             },
             'labels': {
                 'label1': {
@@ -213,7 +199,7 @@ def load_rosbag(file_path: str) -> dict:
                     'end_time': timestamp2,
                     'description': 'Description of the labeled section'
                 },
-                # Add more labels as needed
+                # More sensors
             }
         }
 
@@ -225,34 +211,6 @@ data = load_rosbag(file_path)
 print(data)
 ```
 
-## Save to CSV
-
-### Description
-
-The `save_to_csv` function is designed to take data from the Wheel Diagnostic Data Visualizer and save it to a CSV file. This function facilitates the export of relevant information to a format compatible with tools like Excel for further analysis and visualization.
-
-### Syntax
-
-```python
-def save_to_csv(data: dict, csv_file_path: str) -> None:
-```
-### Parameters
-
-- **data** (`dict`): A dictionary containing the extracted data, typically obtained from the `load_rosbag` function.
-
-- **csv_file_path** (`str`): The path to the CSV file where the data will be saved.
-
-### Return Value
-
-This function does not return any value. It saves the data to the specified CSV file.
-
-### Example
-
-```python
-data = load_rosbag("path/to/your/rosbag/file.bag")
-csv_file_path = "path/to/your/csv/output/file.csv"
-save_to_csv(data, csv_file_path)
-```
 # Plot Data
 
 ### Description
@@ -337,73 +295,4 @@ plot_data(data, wheels_to_plot, sensors_to_plot, plot_type_to_use)
 
 In this example, the plot_data function is used to generate a scatter plot for velocity and temperature data from wheels 1 and 2.
 
-# play_data
 
-## Description
-
-The `play_data` function is designed to visually play through ROS bag data, providing a dynamic representation of the data progression over time. It generates a moving bar, simulating a seeker, to indicate the current position in the dataset.
-
-## Syntax
-
-```python
-def play_data(data: dict, speed: float = 1.0):
-```
-
-## Parameters
-
-- **data** (`dict`): A dictionary containing the extracted data, typically obtained from the `load_rosbag` function.
-
-- **speed** (`float`, optional): The playback speed of the data visualization. Default is `1.0`, representing real-time speed. Values greater than `1.0` accelerate the playback, while values between `0.0` and `1.0` slow it down.
-
-
-## Seeker Visualization
-The seeker is a dynamic visual element that represents the progression of the ROS bag data. It appears as a moving bar, indicating the current position in the dataset as it plays through.
-
-## Return Value
-This function does not return any value. It generates a dynamic visualization of the ROS bag data progression.
-
-## Example
-```python
-data = load_rosbag("path/to/your/rosbag/file.bag")
-play_data(data, speed=1.5)
-```
-In this example, the play_data function is used to visually play through the ROS bag data at 1.5 times the real-time speed.
-
-# create_label
-
-## Description
-
-The `create_label` function allows users to attach notes and visually mark important sections on the graph timeline. This feature is particularly useful for highlighting significant events or anomalies in the diagnostic data.
-
-## Syntax
-
-```python
-def create_label(data: dict, start_time: float, end_time: float, color: str = 'red', text: str = ''):
-```
-
-## Parameters
-
-- **data** (`dict`): A dictionary containing the extracted data, typically obtained from the `load_rosbag` function.
-
-- **start_time** (`float`): The start time of the labeled section on the graph timeline.
-
-- **end_time** (`float`): The end time of the labeled section on the graph timeline.
-
-- **color** (`str`, optional): The color to use for marking the labeled section. Default is `'red'`. Other available options may include common color names or hexadecimal codes.
-
-- **text** (`str`, optional): A text description explaining the significance of the labeled section. This text will be displayed alongside the marked area on the graph.
-
-## Visualization
-
-The labeled section will be visually highlighted on the graph timeline, using the specified color. The attached text will provide additional context for the marked area.
-
-
-## Return Value
-This function does not return any value. It modifies the graph visualization to include the labeled section.
-
-## Example
-
-```python
-data = load_rosbag("path/to/your/rosbag/file.bag")
-create_label(data, start_time=10.0, end_time=15.0, color='yellow', text='Acceleration anomaly detected')
-```
