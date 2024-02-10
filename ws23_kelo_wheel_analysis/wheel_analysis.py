@@ -5,10 +5,10 @@ from rclpy.qos import qos_profile_sensor_data
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import argparse
-import matplotlib.animation as animation
 import time
-
-plt.ion()
+import math
+import matplotlib.cm as cm
+import numpy as np
 
 class WheelAnalysis(Node):
 
@@ -23,29 +23,45 @@ class WheelAnalysis(Node):
         self.subscription  # prevent unused variable warning
 
         self.data = defaultdict(lambda: defaultdict(list))  # {ethercat_number: {sensor: [values]}}
-        self.fig_dict = {}  # {ethercat_number: (fig, ax)}
-        self.start_time = time.time()
+        self.ax_dict = {}  # {ethercat_number: ax}
+        self.start_time = time.time()  # Added this line
 
         self.ethercat_numbers = ethercat_numbers if ethercat_numbers else []
         self.sensors = sensors if sensors else []
         self.window_size = window_size if window_size else float('inf')  # in seconds
+        self.start_time = time.time()  # Start the timer
+
+        # Create a grid of subplots
+        num_plots = len(self.ethercat_numbers)
+        num_cols = math.ceil(math.sqrt(num_plots))
+        num_rows = math.ceil(num_plots / num_cols)
+        self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(8, 6), squeeze=False)  # Set figure size to 800x600
+        colors = cm.rainbow(np.linspace(0, 1, len(self.sensors)))  # Generate a color for each sensor
+        self.color_dict = dict(zip(self.sensors, colors))  # {sensor: color}
+        for ax, ethercat_number in zip(axs.flat, self.ethercat_numbers):
+            ax.set_title(f"Ethercat Number: {ethercat_number}")
+            ax.text(0.5, -0.1, f"Ethercat Number: {ethercat_number}", size=12, ha="center", 
+                    transform=ax.transAxes)  # Add ethercat number under each subplot
+            self.ax_dict[ethercat_number] = ax
+
+        plt.show(block=False)
         print("WheelAnalysis Node initialized.")
 
     def listener_callback(self, msg):
         print(f"Received message with ethercat_number: {msg.ethercat_number}")
         if msg.ethercat_number in self.ethercat_numbers:
             elapsed_time = time.time() - self.start_time
-            self.data[msg.ethercat_number]['time'].append(elapsed_time)
             for sensor in self.sensors:
-                self.data[msg.ethercat_number][sensor].append(getattr(msg, sensor))
+                if getattr(msg, sensor) is not None:  # Check if sensor data exists
+                    self.data[msg.ethercat_number]['time'].append(elapsed_time)
+                    self.data[msg.ethercat_number][sensor].append(getattr(msg, sensor))
             print(f"Updated data for ethercat_number: {msg.ethercat_number}")
             self.plot_data(msg.ethercat_number)
 
+
     def plot_data(self, ethercat_number):
         print("Plotting data...")
-        if ethercat_number not in self.fig_dict:
-            self.fig_dict[ethercat_number] = plt.subplots()
-        fig, ax = self.fig_dict[ethercat_number]
+        ax = self.ax_dict[ethercat_number]
         ax.clear()
         for sensor in self.sensors:
             times = self.data[ethercat_number]['time']
@@ -54,12 +70,14 @@ class WheelAnalysis(Node):
             if times[-1] - times[0] > self.window_size:
                 start_index = next(i for i, t in enumerate(times) if t - times[0] > self.window_size)
                 times = times[start_index:]
-                sensor_data = sensor_data[start_index:]
-            ax.plot(times, sensor_data, label=sensor)
+                sensor_data = sensor_data[:len(times)]  # Ensure sensor_data has the same length as times
+            ax.plot(times, sensor_data, label=sensor, color=self.color_dict[sensor])  # Plot with sensor-specific color
         ax.legend()
-        ax.set_title(f"Data for Ethercat Number: {ethercat_number}")
-        fig.canvas.draw()
+        ax.set_title(f"Ethercat Number: {ethercat_number}")
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
         print("Data plotted.")
+
 
 
 
