@@ -19,7 +19,22 @@ class WheelDiagConverter(Node):
     def listener_callback(self, msg):
         data = json.loads(msg.data)
         wheel_diag_msg = WheelDiag()
-        wheel_diag_msg.temperature_1 = data['temperature_1']
+        wheel_diag_msg.status1 = data['status1']
+        wheel_diag_msg.status2 = data['status2']
+        wheel_diag_msg.sensor_ts = data['sensor_ts']
+        wheel_diag_msg.setpoint_ts = data['setpoint_ts']
+        wheel_diag_msg.encoder_1 = data['encoder_2']
+        wheel_diag_msg.velocity_1 = data['velocity_2']
+        wheel_diag_msg.current_1_d = data['current_2_d']
+        wheel_diag_msg.current_1_q = data['current_2_q']
+        wheel_diag_msg.current_1_u = data['current_2_u']
+        wheel_diag_msg.current_1_v = data['current_2_v']
+        wheel_diag_msg.current_1_w = data['current_2_w']
+        wheel_diag_msg.voltage_1 = data['voltage_2']
+        wheel_diag_msg.voltage_1_u = data['voltage_2_u']
+        wheel_diag_msg.voltage_1_v = data['voltage_2_v']
+        wheel_diag_msg.voltage_1_w = data['voltage_2_w']
+        wheel_diag_msg.temperature_1 = data['temperature_2']
         wheel_diag_msg.encoder_2 = data['encoder_2']
         wheel_diag_msg.velocity_2 = data['velocity_2']
         wheel_diag_msg.current_2_d = data['current_2_d']
