@@ -1,7 +1,7 @@
-uint16 status1
-uint16 status2
-uint64 sensor_ts
-uint64 setpoint_ts
+float64 status1
+float64 status2
+float64 sensor_ts
+float64 setpoint_ts
 float64 encoder_1
 float64 velocity_1
 float64 current_1_d
