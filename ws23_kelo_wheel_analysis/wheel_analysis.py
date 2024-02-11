@@ -12,7 +12,7 @@ import numpy as np
 
 class WheelAnalysis(Node):
 
-    def __init__(self,   ethercat_numbers=None, sensors=None, window_size=None, wheels=None):
+    def __init__(self,   ethercat_numbers=None, sensors=None, window_size=None, wheels=None, yrange=None):
         super().__init__('wheel_analysis')
         print("Initializing WheelAnalysis Node...")
         self.subscription = self.create_subscription(
@@ -21,7 +21,7 @@ class WheelAnalysis(Node):
             self.listener_callback,
             qos_profile_sensor_data)
         self.subscription  # prevent unused variable warning
-
+        self.yrange = yrange
         self.data = defaultdict(lambda: defaultdict(list))  # {ethercat_number: {sensor: [values]}}
         self.ax_dict = {}  # {ethercat_number: ax}
         self.start_time = time.time()  # Added this line
@@ -37,8 +37,7 @@ class WheelAnalysis(Node):
         num_cols = math.ceil(math.sqrt(num_plots))
         num_rows = math.ceil(num_plots / num_cols)
         self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(8,  6), squeeze=False)  # Set figure size to  800x600
-        self.color_dict = {sensor: cm.rainbow(i / len(self.sensors)) for i, sensor in enumerate(self.sensors)}
-        colors = cm.rainbow(np.linspace(0,  1, len(self.sensors)))  # Generate a color for each sensor
+        self.colors = cm.viridis(np.linspace(0,  1, num_plots))  # Generate a bright color for each subplot
         for ax,   ethercat_number in zip(axs.flat, self.ethercat_numbers):
             wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
             if wheel_number is not None:
@@ -81,9 +80,13 @@ class WheelAnalysis(Node):
                 times = times[start_index:]
                 sensor_data = sensor_data[:len(times)]  # Ensure sensor_data has the same length as times
             ax.set_ylabel(sensor)
-            ax.plot(times, sensor_data, label=sensor, color=self.color_dict[sensor])  # Plot with sensor-specific color
+            # Find the index of the subplot and use the corresponding color
+            subplot_index = self.ethercat_numbers.index(ethercat_number)
+            ax.plot(times, sensor_data, label=sensor, color=self.colors[subplot_index])  # Plot with unique color for subplot
 
         ax.legend()
+        if self.yrange:
+            ax.set_ylim(self.yrange)  # Set the y-axis range
         wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
         ax.set_title(f"Wheel Number: {wheel_number}")
         self.fig.canvas.draw()
@@ -96,11 +99,12 @@ def main(args=None):
     parser.add_argument('--ethercats', metavar='number', type=int, nargs='+', help='list of ethercat numbers')
     parser.add_argument('--sensors', metavar='name', type=str, nargs='+', help='list of sensor names')
     parser.add_argument('--window', metavar='seconds', type=int, help='window size in seconds for the plot')
+    parser.add_argument('--yrange', metavar='min max', type=float, nargs=2, help='minimum and maximum y-axis range')
     args = parser.parse_args()
 
     rclpy.init(args=None)
 
-    wheel_analysis = WheelAnalysis(args.ethercats, args.sensors, args.window, args.wheels)
+    wheel_analysis = WheelAnalysis(args.ethercats, args.sensors, args.window, args.wheels, args.yrange)
 
     rclpy.spin(wheel_analysis)
 
