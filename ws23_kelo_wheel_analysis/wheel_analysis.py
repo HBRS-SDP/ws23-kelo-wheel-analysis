@@ -84,7 +84,7 @@ class WheelAnalysis(Node):
             subplot_index = self.ethercat_numbers.index(ethercat_number)
             ax.plot(times, sensor_data, label=sensor, color=self.colors[subplot_index])  # Plot with unique color for subplot
 
-        ax.legend()
+        #ax.legend()
         if self.yrange:
             ax.set_ylim(self.yrange)  # Set the y-axis range
         wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
