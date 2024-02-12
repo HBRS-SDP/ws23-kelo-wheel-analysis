@@ -1,33 +1,34 @@
 import subprocess
 import os
 
-def run_command(cmd):
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
-    rc = process.poll()
-    return rc
+def run_commands_serially(cmds):
+    # Append '; true' to each command to ensure the terminal stays open
+    cmds = [f"{cmd}; true" for cmd in cmds]
+    # Join the commands with ' && ' to ensure they are executed sequentially
+    cmd_str = ' && '.join(cmds)
+    # Add a read command to pause the terminal before closing
+    cmd_str += ' && read -p "Press Enter to close the terminal..."'
+    # Open a new gnome-terminal window and run all commands in a single instance
+    subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', cmd_str])
 
-# Change to the root directory of the user
-os.chdir('/home/saif')
+# Run commands serially in one subprocess
+cmds = [
+    'source /opt/ros/rolling/setup.bash',
+    'cd /home/saif',
+    'cd sdp_wheel',
+    'source install/local_setup.bash',
+    'echo "running wheel_diag_converter"',
+    'ros2 run ws23_kelo_wheel_analysis wheel_diag_converter'
+]
+run_commands_serially(cmds)
 
-# Source .bashrc to load environment variables
-run_command('. ~/.bashrc && echo "Environment variables loaded."')
-
-# Navigate to the sdp_wheel directory
-os.chdir('sdp_wheel')
-
-# Run ros_rolling
-run_command('ros_rolling')
-
-# Source the local_setup.bash
-run_command('source install/local_setup.bash')
-
-# Run the wheel_diag_converter
-run_command('ros2 run ws23_kelo_wheel_analysis wheel_diag_converter')
-
-# Additional processes can be added here, separated by calls to run_command
+# Run commands serially in one subprocess
+cmds = [
+    'source /opt/ros/rolling/setup.bash',
+    'cd /home/saif',
+    'cd sdp_wheel/record_feb_final',
+    'source install/local_setup.bash',
+    'echo "running wheel_diag_converter"',
+    'ros2 run ws23_kelo_wheel_analysis wheel_diag_converter'
+]
+run_commands_serially(cmds)
