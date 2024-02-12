@@ -20,7 +20,7 @@ class WheelAnalysis(Node):
     def __init__(self,   ethercat_numbers=None, sensors=None, window_size=None, wheels=None, yrange=None, title=None):
         super().__init__('wheel_analysis')
         print("Initializing WheelAnalysis Node...")
-        custom_qos_profile = QoSProfile(depth=10000)  # Adjust the depth to a suitable value
+        custom_qos_profile = QoSProfile(depth=1000)  # Adjust the depth to a suitable value
         self.subscription = self.create_subscription(
             WheelDiag,
             'wheel_diag_non_json',
@@ -39,13 +39,16 @@ class WheelAnalysis(Node):
         self.yrange = yrange
         self.data = defaultdict(lambda: defaultdict(list))  # {ethercat_number: {sensor: [values]}}
         self.ax_dict = {}  # {ethercat_number: ax}
-        self.start_time = time.time()  # Added this line
+        self.start_time = None  # Initialize start_time as None
         self.title = title
         self.ethercat_numbers = ethercat_numbers if ethercat_numbers else []
         self.sensors = sensors if sensors else []
         self.window_size = window_size if window_size else float('inf')  # in seconds
         self.ethercat_wheel_map = dict(zip(ethercat_numbers, wheels)) if  ethercat_numbers and wheels else {}
-        self.start_time = time.time()  # Start the timer
+        self.start_times = {ethercat_number: None for  ethercat_number in  ethercat_numbers} if  ethercat_numbers else {}
+        self.previous_timestamp = time.time()
+        self.last_plot_update = {ethercat_number: None for  ethercat_number in self.ethercat_numbers}
+
 
         # Create a grid of subplots
         num_plots = len(self.ethercat_numbers)
@@ -78,16 +81,26 @@ class WheelAnalysis(Node):
         self.cmd_vel_msg = msg
 
     def listener_callback(self, msg):
-        print(f"Received message with ethercat_number: {msg.ethercat_number}")
+        #print(f"Received message with  ethercat_number: {msg.ethercat_number}")
         if msg.ethercat_number in self.ethercat_numbers:
-            elapsed_time = time.time() - self.start_time
+            # Convert nanoseconds to seconds
+            sensor_ts = getattr(msg, 'sensor_ts') *  1e-9 if getattr(msg, 'sensor_ts') is not None else None
+            
+            if self.start_times[msg.ethercat_number] is None:
+                self.start_times[msg.ethercat_number] = sensor_ts
+            elapsed_time = sensor_ts - self.start_times[msg.ethercat_number] if sensor_ts is not None else None
+            
+            #print(elapsed_time)
             for sensor in self.sensors:
                 if getattr(msg, sensor) is not None:  # Check if sensor data exists
                     self.data[msg.ethercat_number]['time'].append(elapsed_time)
                     self.data[msg.ethercat_number][sensor].append(getattr(msg, sensor))
-            #print(f"Updated data for ethercat_number: {msg.ethercat_number}")
-            self.plot_data(msg.ethercat_number)
-
+            # Check if enough time has passed since the last plot update for this  ethercat_number
+            current_time = time.time()
+            if self.last_plot_update[msg.ethercat_number] is None or current_time - self.last_plot_update[msg.ethercat_number] >=  0.3:
+                self.plot_data(msg.ethercat_number)
+                self.last_plot_update[msg.ethercat_number] = current_time
+        
 
     def plot_data(self,  ethercat_number):
         #print("Plotting data...")
@@ -108,7 +121,7 @@ class WheelAnalysis(Node):
             y_labels.append((sensor, color))
             ax.set_xlabel("Time(s)")
             # Ensure times and sensor_data have the same length before plotting
-            min_length = min(len(times), len(sensor_data))
+            min_length = min(len(times), len(sensor_data)) 
             times = times[:min_length]
             sensor_data = sensor_data[:min_length]
             # Create a custom legend with different colors for each sensor
@@ -130,8 +143,15 @@ class WheelAnalysis(Node):
             if hasattr(self, 'cmd_vel_msg'):
                 cmd_vel_text = str(self.cmd_vel_msg)
                 self.fig.text(0.5,  0.92, cmd_vel_text, ha='center', va='baseline', fontsize=12, color='black')
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+            # Calculate elapsed time since the last draw
+            current_time = time.time()
+            elapsed_time = current_time - self.previous_timestamp
+
+            # Only redraw and flush events if more than  1 second has passed
+            if elapsed_time >  1:
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
+                self.previous_timestamp = current_time  # Update the previous timestamp
             #print("Data plotted.")
 
 def main(args=None):
