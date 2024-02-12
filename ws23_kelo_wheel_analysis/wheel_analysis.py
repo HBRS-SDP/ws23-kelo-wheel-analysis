@@ -9,6 +9,7 @@ import time
 import math
 import matplotlib.cm as cm
 import numpy as np
+import random
 
 class WheelAnalysis(Node):
 
@@ -71,6 +72,8 @@ class WheelAnalysis(Node):
         print("Plotting data...")
         ax = self.ax_dict[ethercat_number]
         ax.clear()
+        print(f"Processing sensors: {self.sensors}")  # Print the list of sensors being processed
+        y_labels = ""
         for sensor in self.sensors:
             times = self.data[ethercat_number]['time']
             sensor_data = self.data[ethercat_number][sensor]
@@ -79,11 +82,17 @@ class WheelAnalysis(Node):
                 start_index = next(i for i, t in enumerate(times) if t - times[0] > self.window_size)
                 times = times[start_index:]
                 sensor_data = sensor_data[:len(times)]  # Ensure sensor_data has the same length as times
-            ax.set_ylabel(sensor)
+            color = '#%02X%02X%02X' % (random.randint(0,  255), random.randint(0,  255), random.randint(0,  255))
+            y_labels += f"{sensor}\t"
             ax.set_xlabel("Time(s)")
             # Find the index of the subplot and use the corresponding color
             subplot_index = self.ethercat_numbers.index(ethercat_number)
-            ax.plot(times, sensor_data, label=sensor, color=self.colors[subplot_index])  # Plot with unique color for subplot
+             # Ensure times and sensor_data have the same length before plotting
+            min_length = min(len(times), len(sensor_data))
+            times = times[:min_length]
+            sensor_data = sensor_data[:min_length]
+        ax.set_ylabel(y_labels)
+        ax.plot(times, sensor_data, label=sensor, color=color)  # Plot with unique color for subplot
 
         #ax.legend()
         if self.yrange:
