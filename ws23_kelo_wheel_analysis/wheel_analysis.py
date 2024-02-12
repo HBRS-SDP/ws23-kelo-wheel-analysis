@@ -11,17 +11,30 @@ import matplotlib.cm as cm
 import numpy as np
 import random
 from matplotlib.patches import Patch
+from geometry_msgs.msg import Twist
+from rclpy.qos import QoSProfile
+
 
 class WheelAnalysis(Node):
 
     def __init__(self,   ethercat_numbers=None, sensors=None, window_size=None, wheels=None, yrange=None, title=None):
         super().__init__('wheel_analysis')
         print("Initializing WheelAnalysis Node...")
+        custom_qos_profile = QoSProfile(depth=10000)  # Adjust the depth to a suitable value
         self.subscription = self.create_subscription(
             WheelDiag,
             'wheel_diag_non_json',
             self.listener_callback,
-            qos_profile_sensor_data)
+            custom_qos_profile)
+        
+        # Inside the __init__ method of the WheelAnalysis class
+        self.cmd_vel_subscription = self.create_subscription(
+            Twist,
+            '/cmd_vel',
+            self.cmd_vel_callback,
+            qos_profile_sensor_data
+        )
+        self.cmd_vel_subscription  # prevent unused variable warning
         self.subscription  # prevent unused variable warning
         self.yrange = yrange
         self.data = defaultdict(lambda: defaultdict(list))  # {ethercat_number: {sensor: [values]}}
@@ -61,6 +74,9 @@ class WheelAnalysis(Node):
         plt.show(block=False)
         print("WheelAnalysis Node initialized.")
 
+    def cmd_vel_callback(self, msg):
+        self.cmd_vel_msg = msg
+
     def listener_callback(self, msg):
         print(f"Received message with ethercat_number: {msg.ethercat_number}")
         if msg.ethercat_number in self.ethercat_numbers:
@@ -69,15 +85,15 @@ class WheelAnalysis(Node):
                 if getattr(msg, sensor) is not None:  # Check if sensor data exists
                     self.data[msg.ethercat_number]['time'].append(elapsed_time)
                     self.data[msg.ethercat_number][sensor].append(getattr(msg, sensor))
-            print(f"Updated data for ethercat_number: {msg.ethercat_number}")
+            #print(f"Updated data for ethercat_number: {msg.ethercat_number}")
             self.plot_data(msg.ethercat_number)
 
 
     def plot_data(self,  ethercat_number):
-        print("Plotting data...")
+        #print("Plotting data...")
         ax = self.ax_dict[ethercat_number]
         ax.clear()
-        print(f"Processing sensors: {self.sensors}")  # Print the list of sensors being processed
+        #print(f"Processing sensors: {self.sensors}")  # Print the list of sensors being processed
         y_labels = []
         for idx, sensor in enumerate(self.sensors):
             times = self.data[ethercat_number]['time']
@@ -109,10 +125,14 @@ class WheelAnalysis(Node):
                 ax.set_ylim(self.yrange)  # Set the y-axis range
             wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
             ax.set_title(f"Wheel Number: {wheel_number}")
-            self.fig.text(0.5,  0.95, self.title, ha='center', va='baseline', fontsize=16, fontweight='bold', color='red')
+            self.fig.text(0.5,  0.95, self.title, ha='center', va='baseline', fontsize=16, color='red')
+            # Assuming self.cmd_vel_msg is defined and updated in cmd_vel_callback
+            if hasattr(self, 'cmd_vel_msg'):
+                cmd_vel_text = str(self.cmd_vel_msg)
+                self.fig.text(0.5,  0.92, cmd_vel_text, ha='center', va='baseline', fontsize=12, color='black')
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
-            print("Data plotted.")
+            #print("Data plotted.")
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Analyze wheel_diag_non_json data.')
