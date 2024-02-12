@@ -36,7 +36,7 @@ class WheelAnalysis(Node):
         num_plots = len(self.ethercat_numbers)
         num_cols = math.ceil(math.sqrt(num_plots))
         num_rows = math.ceil(num_plots / num_cols)
-        self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(8,  6), squeeze=False)  # Set figure size to  800x600
+        self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(19,  10), squeeze=False)  # Set figure size to  800x600
         self.colors = cm.viridis(np.linspace(0,  1, num_plots))  # Generate a bright color for each subplot
         for ax,   ethercat_number in zip(axs.flat, self.ethercat_numbers):
             wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
@@ -80,6 +80,7 @@ class WheelAnalysis(Node):
                 times = times[start_index:]
                 sensor_data = sensor_data[:len(times)]  # Ensure sensor_data has the same length as times
             ax.set_ylabel(sensor)
+            ax.set_xlabel("Time(s)")
             # Find the index of the subplot and use the corresponding color
             subplot_index = self.ethercat_numbers.index(ethercat_number)
             ax.plot(times, sensor_data, label=sensor, color=self.colors[subplot_index])  # Plot with unique color for subplot
