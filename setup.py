@@ -24,7 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
             'wheel_diag_converter = ws23_kelo_wheel_analysis.wheel_diag_converter:main',
-            'wheel_analysis = ws23_kelo_wheel_analysis.wheel_analysis:main'
+            'wheel_analysis = ws23_kelo_wheel_analysis.wheel_analysis:main',
+            'loss_contact = ws23_kelo_wheel_analysis.loss_contact:main'
         ],
     },
 )

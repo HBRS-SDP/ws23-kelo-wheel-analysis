@@ -13,6 +13,7 @@ import random
 from matplotlib.patches import Patch
 from geometry_msgs.msg import Twist
 from rclpy.qos import QoSProfile
+from matplotlib.colors import LinearSegmentedColormap
 
 
 class WheelAnalysis(Node):
@@ -55,7 +56,12 @@ class WheelAnalysis(Node):
         num_cols = math.ceil(math.sqrt(num_plots))
         num_rows = math.ceil(num_plots / num_cols)
         self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(19,  10), squeeze=False)  # Set figure size to  800x600
-        self.colors = cm.viridis(np.linspace(0,  1, num_plots))  # Generate a bright color for each subplot
+        # Create a custom colormap
+        colors = ['blue', 'green', 'cyan', 'magenta', 'red', 'purple']
+        custom_colormap = LinearSegmentedColormap.from_list('custom_colormap', colors)
+
+        # Now use the custom colormap instead of viridis
+        self.colors = custom_colormap(np.linspace(0,  1, num_plots))
         # After creating the figure and axes, set the suptitle
         print(f"Title set to: '{self.title}'")
         # Correct the suptitle method call to use 'color' instead of 'fontcolor'
