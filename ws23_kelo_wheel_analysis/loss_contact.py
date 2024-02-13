@@ -17,6 +17,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.signal import cheby1, filtfilt
 from scipy.stats import zscore
 import numpy as np
+from sklearn.cluster import DBSCAN
 
 
 class LossContact(Node):
@@ -133,33 +134,43 @@ class LossContact(Node):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             self.previous_timestamp = current_time  # Update the previous timestamp
-        self.is_contact_loss(self.sensors)
+        self.is_contact_loss_iqr(self.sensors)
 
-    def is_contact_loss(self, sensors):
+    def is_contact_loss_iqr(self, sensors):
         for sensor in sensors:
-            # Gather all data for this sensor across all wheels
-            sensor_data = [self.data[ethercat_number][sensor] for ethercat_number in self.ethercat_numbers]
-            # Find the minimum length of sensor_data across all wheels
-            min_length = min(len(data) for data in sensor_data)
-
-            # Trim sensor_data to the minimum length
-            sensor_data = [data[:min_length] for data in sensor_data]
-            # Apply Chebyshev filter and calculate z-scores
-            filtered_sensor_data = []
-            for data in sensor_data:
-                if data:  # Check if data is not empty
-                    N = 4  # Order of the filter
-                    Wn = 0.1  # Cutoff frequency
-                    b, a = cheby1(N, 1, Wn, 'low')
-                    padlen = min(len(data) - 1, 3 * max(len(b), len(a)))
-                    filtered_data = filtfilt(b, a, data, padlen=padlen)
-                    filtered_sensor_data.append(filtered_data)
-            # Calculate z-scores
-            z_scores = zscore(filtered_sensor_data)
-            # Identify outliers (here, wheels with a z-score > 2 or < -2)
-            outliers = np.where((z_scores > 1) | (z_scores < -1))
-            outlier_wheels = [self.ethercat_wheel_map.get(self.ethercat_numbers[i], self.ethercat_numbers[i]) for i in outliers[0]]
+            # Gather the last value for this sensor across all wheels
+            sensor_data = [self.data[ethercat_number][sensor][-1] for ethercat_number in self.ethercat_numbers if ethercat_number in self.data and sensor in self.data[ethercat_number]]
+            
+            # Calculate IQR
+            Q1 = np.percentile(sensor_data, 25)
+            Q3 = np.percentile(sensor_data, 75)
+            IQR = Q3 - Q1
+            
+            # Define outliers as observations that fall below Q1 - 1.5*IQR or above Q3 + 1.5*IQR
+            outlier_condition = (sensor_data < (Q1 - 1.5 * IQR)) | (sensor_data > (Q3 + 1.5 * IQR))
+            
+            # Identify outliers
+            outliers = np.where(outlier_condition)[0]
+            outlier_wheels = [self.ethercat_wheel_map.get(self.ethercat_numbers[i], self.ethercat_numbers[i]) for i in outliers]
             print(f"Outlier wheels for sensor {sensor}: {outlier_wheels}")
+
+    def is_contact_loss_dbscan(self, sensors):
+        for sensor in sensors:
+            # Gather the last value for this sensor across all wheels
+            sensor_data = [self.data[ethercat_number][sensor][-1] for   ethercat_number in self.ethercat_numbers if  ethercat_number in self.data and sensor in self.data[ethercat_number]]
+            
+            # Reshape the data to be compatible with DBSCAN
+            sensor_data = np.array(sensor_data).reshape(-1,   1)
+            
+            # Apply DBSCAN to detect outliers
+            dbscan = DBSCAN(eps=0.5, min_samples=2).fit(sensor_data)
+            outlier_labels = dbscan.labels_
+            
+            # Identify outliers (here, wheels with a label of -1)
+            outliers = np.where(outlier_labels == -1)[0]
+            outlier_wheels = [self.ethercat_wheel_map.get(self.ethercat_numbers[i], self.ethercat_numbers[i]) for i in outliers]
+            print(f"Outlier wheels for sensor {sensor}: {outlier_wheels}")
+
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Analyze wheel_diag_non_json data.')
