@@ -14,11 +14,14 @@ from matplotlib.patches import Patch
 from geometry_msgs.msg import Twist
 from rclpy.qos import QoSProfile
 from matplotlib.colors import LinearSegmentedColormap
+from scipy.signal import cheby1, filtfilt
+from scipy.stats import zscore
+import numpy as np
 
 
 class LossContact(Node):
 
-    def __init__(self,   ethercat_numbers=None, sensors=None, window_size=None, wheels=None, yrange=None, title=None):
+    def __init__(self, ethercat_numbers=None, sensors=None, window_size=None, wheels=None, yrange=None, title=None):
         super().__init__('wheel_analysis')
         print("Initializing WheelAnalysis Node...")
         custom_qos_profile = QoSProfile(depth=1000)  # Adjust the depth to a suitable value
@@ -45,43 +48,28 @@ class LossContact(Node):
         self.ethercat_numbers = ethercat_numbers if ethercat_numbers else []
         self.sensors = sensors if sensors else []
         self.window_size = window_size if window_size else float('inf')  # in seconds
-        self.ethercat_wheel_map = dict(zip(ethercat_numbers, wheels)) if  ethercat_numbers and wheels else {}
-        self.start_times = {ethercat_number: None for  ethercat_number in  ethercat_numbers} if  ethercat_numbers else {}
+        self.ethercat_wheel_map = dict(zip(ethercat_numbers, wheels)) if ethercat_numbers and wheels else {}
+        self.start_times = {ethercat_number: None for ethercat_number in ethercat_numbers} if ethercat_numbers else {}
         self.previous_timestamp = time.time()
-        self.last_plot_update = {ethercat_number: None for  ethercat_number in self.ethercat_numbers}
+        self.last_plot_update = {ethercat_number: None for ethercat_number in self.ethercat_numbers}
 
-
-        # Create a grid of subplots
-        num_plots = len(self.ethercat_numbers)
-        num_cols = math.ceil(math.sqrt(num_plots))
-        num_rows = math.ceil(num_plots / num_cols)
-        self.fig, axs = plt.subplots(num_rows, num_cols, figsize=(19,  10), squeeze=False)  # Set figure size to  800x600
+        # Create a single plot instead of a grid of subplots
+        self.fig, ax = plt.subplots(figsize=(19, 10))  # Set figure size to 800x600
         # Create a custom colormap
         colors = ['blue', 'green', 'cyan', 'magenta', 'red', 'purple']
         custom_colormap = LinearSegmentedColormap.from_list('custom_colormap', colors)
 
         # Now use the custom colormap instead of viridis
-        self.colors = custom_colormap(np.linspace(0,  1, num_plots))
+        self.colors = custom_colormap(np.linspace(0, 1, len(self.sensors)))
         # After creating the figure and axes, set the suptitle
         print(f"Title set to: '{self.title}'")
         # Correct the suptitle method call to use 'color' instead of 'fontcolor'
         self.fig.suptitle(self.title, fontsize=16, fontweight='bold', y=1.05, color='red')
-        for ax,   ethercat_number in zip(axs.flat, self.ethercat_numbers):
-            wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
-            if wheel_number is not None:
-                ax.set_title(f"Wheel Number: {wheel_number}")
-                ax.text(0.5, -0.1, f"Wheel Number: {wheel_number}", size=12, ha="center",   
-                        transform=ax.transAxes)  # Update title to show wheel number
-                self.ax_dict[ethercat_number] = ax
-                # Set the y-axis label to the first sensor in the list
-                if self.sensors:
-                    ax.set_ylabel(self.sensors[0])
-                else:
-                    ax.set_ylabel('Sensor Data')
-            else:
-                print(f"No wheel mapping found for EtherCAT number: {ethercat_number}")
+        self.ax_dict = {ethercat_number: ax for ethercat_number in self.ethercat_numbers}
+        ax.set_ylabel('Sensor Data')
         plt.show(block=False)
         print("WheelAnalysis Node initialized.")
+
 
     def cmd_vel_callback(self, msg):
         self.cmd_vel_msg = msg
@@ -107,58 +95,71 @@ class LossContact(Node):
                 self.plot_data(msg.ethercat_number)
                 self.last_plot_update[msg.ethercat_number] = current_time
         
+    
 
-    def plot_data(self,  ethercat_number):
-        #print("Plotting data...")
+
+
+    def plot_data(self, ethercat_number):
         ax = self.ax_dict[ethercat_number]
-        ax.clear()
-        #print(f"Processing sensors: {self.sensors}")  # Print the list of sensors being processed
-        y_labels = []
+        wheel_number = self.ethercat_wheel_map.get(ethercat_number, ethercat_number)  # Use ethercat number if wheel number is not found
         for idx, sensor in enumerate(self.sensors):
-            times = self.data[ethercat_number]['time']
             sensor_data = self.data[ethercat_number][sensor]
-            # Keep only data within the window size
-            if times[-1] - times[0] > self.window_size:
-                start_index = next(i for i, t in enumerate(times) if t - times[0] > self.window_size)
-                times = times[start_index:]
-                sensor_data = sensor_data[:len(times)]  # Ensure sensor_data has the same length as times
-            # Use the index to generate a consistent color for each sensor
             color = self.colors[idx]
-            y_labels.append((sensor, color))
-            ax.set_xlabel("Time(s)")
-            # Ensure times and sensor_data have the same length before plotting
-            min_length = min(len(times), len(sensor_data)) 
-            times = times[:min_length]
-            sensor_data = sensor_data[:min_length]
-            # Create a custom legend with different colors for each sensor
-            legend_handles = [Patch(facecolor=color, edgecolor='none', label=label) for label, color in y_labels]
-            ax.legend(handles=legend_handles, loc='upper left', bbox_to_anchor=(0,  1), borderaxespad=0.)
-            ax.set_ylabel('\t'.join([label for label, _ in y_labels]))  # Join labels with tabs
-            y_tick_labels = ['\t'.join([label for label, _ in y_labels])]
-            for i, (_, color) in enumerate(y_labels):
-                ax.get_yticklabels()[i].set_color(color)  # Set color for each y-tick label
-            ax.plot(times, sensor_data, label=sensor, color=color)  # Plot with unique color for subplot
+            sensor_label = f"Wheel {wheel_number} {sensor}"
+            line = next((line for line in ax.lines if line.get_label() == sensor_label), None)
+            if line is None:
+                line, = ax.plot(sensor_data, label=sensor_label, color=color)
+                ax.legend(loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
+            else:
+                line.set_ydata(sensor_data)
+                line.set_xdata(range(len(sensor_data)))
+        ax.relim()
+        ax.autoscale_view()
+        ax.set_ylabel('\t'.join([f"Wheel {wheel_number} {sensor}" for sensor in self.sensors]))
+        ax.set_xlabel('Time')
+        if self.yrange:
+            ax.set_ylim(self.yrange)  # Set the y-axis range
+        ax.set_title(f"Wheel Number: {wheel_number}")
+        self.fig.text(0.5,  0.95, self.title, ha='center', va='baseline', fontsize=16, color='red')
+        # Assuming self.cmd_vel_msg is defined and updated in cmd_vel_callback
+        if hasattr(self, 'cmd_vel_msg'):
+            cmd_vel_text = str(self.cmd_vel_msg)
+            self.fig.text(0.5,  0.92, cmd_vel_text, ha='center', va='baseline', fontsize=12, color='black')
+        # Calculate elapsed time since the last draw
+        current_time = time.time()
+        elapsed_time = current_time - self.previous_timestamp
+        # Only redraw and flush events if more than  1 second has passed
+        if elapsed_time >  1:
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            self.previous_timestamp = current_time  # Update the previous timestamp
+        self.is_contact_loss(self.sensors)
 
-            #ax.legend()
-            if self.yrange:
-                ax.set_ylim(self.yrange)  # Set the y-axis range
-            wheel_number = self.ethercat_wheel_map.get(ethercat_number, None)
-            ax.set_title(f"Wheel Number: {wheel_number}")
-            self.fig.text(0.5,  0.95, self.title, ha='center', va='baseline', fontsize=16, color='red')
-            # Assuming self.cmd_vel_msg is defined and updated in cmd_vel_callback
-            if hasattr(self, 'cmd_vel_msg'):
-                cmd_vel_text = str(self.cmd_vel_msg)
-                self.fig.text(0.5,  0.92, cmd_vel_text, ha='center', va='baseline', fontsize=12, color='black')
-            # Calculate elapsed time since the last draw
-            current_time = time.time()
-            elapsed_time = current_time - self.previous_timestamp
+    def is_contact_loss(self, sensors):
+        for sensor in sensors:
+            # Gather all data for this sensor across all wheels
+            sensor_data = [self.data[ethercat_number][sensor] for ethercat_number in self.ethercat_numbers]
+            # Find the minimum length of sensor_data across all wheels
+            min_length = min(len(data) for data in sensor_data)
 
-            # Only redraw and flush events if more than  1 second has passed
-            if elapsed_time >  1:
-                self.fig.canvas.draw()
-                self.fig.canvas.flush_events()
-                self.previous_timestamp = current_time  # Update the previous timestamp
-            #print("Data plotted.")
+            # Trim sensor_data to the minimum length
+            sensor_data = [data[:min_length] for data in sensor_data]
+            # Apply Chebyshev filter and calculate z-scores
+            filtered_sensor_data = []
+            for data in sensor_data:
+                if data:  # Check if data is not empty
+                    N = 4  # Order of the filter
+                    Wn = 0.1  # Cutoff frequency
+                    b, a = cheby1(N, 1, Wn, 'low')
+                    padlen = min(len(data) - 1, 3 * max(len(b), len(a)))
+                    filtered_data = filtfilt(b, a, data, padlen=padlen)
+                    filtered_sensor_data.append(filtered_data)
+            # Calculate z-scores
+            z_scores = zscore(filtered_sensor_data)
+            # Identify outliers (here, wheels with a z-score > 2 or < -2)
+            outliers = np.where((z_scores > 1) | (z_scores < -1))
+            outlier_wheels = [self.ethercat_wheel_map.get(self.ethercat_numbers[i], self.ethercat_numbers[i]) for i in outliers[0]]
+            print(f"Outlier wheels for sensor {sensor}: {outlier_wheels}")
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Analyze wheel_diag_non_json data.')
