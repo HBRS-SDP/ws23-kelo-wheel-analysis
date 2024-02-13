@@ -96,9 +96,6 @@ class LossContact(Node):
                 self.plot_data(msg.ethercat_number)
                 self.last_plot_update[msg.ethercat_number] = current_time
         
-    
-
-
 
     def plot_data(self, ethercat_number):
         ax = self.ax_dict[ethercat_number]
@@ -120,7 +117,8 @@ class LossContact(Node):
         ax.set_xlabel('Time')
         if self.yrange:
             ax.set_ylim(self.yrange)  # Set the y-axis range
-        ax.set_title(f"Wheel Number: {wheel_number}")
+        contactless = str(self.is_contact_loss_iqr(self.sensors,1,0.3))
+        ax.set_title(f"Contactless Wheel Number: {contactless}")
         self.fig.text(0.5,  0.95, self.title, ha='center', va='baseline', fontsize=16, color='red')
         # Assuming self.cmd_vel_msg is defined and updated in cmd_vel_callback
         if hasattr(self, 'cmd_vel_msg'):
@@ -134,35 +132,31 @@ class LossContact(Node):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             self.previous_timestamp = current_time  # Update the previous timestamp
-        self.is_contact_loss_iqr(self.sensors,1,0.3)
+        
 
     def is_contact_loss_iqr(self, sensors, n, std_threshold):
+        all_outlier_wheels = []
         for sensor in sensors:
             latest_values = [self.data[ethercat_number][sensor][-1] for ethercat_number in self.ethercat_numbers if ethercat_number in self.data and sensor in self.data[ethercat_number]]
-            # Calculate the standard deviation for all latest values for this sensor
             std_dev_all = np.std(latest_values)
-            #print(std_dev_all)
-            if ( std_dev_all > std_threshold):
-                # Gather the last n values for this sensor across all wheels
+            if (std_dev_all > std_threshold):
                 sensor_data = [self.data[ethercat_number][sensor][-n:] for ethercat_number in self.ethercat_numbers if ethercat_number in self.data and sensor in self.data[ethercat_number]]
-                
-                # Flatten the list of lists into a single list
                 sensor_data = [item for sublist in sensor_data for item in sublist]
-                
-                # Calculate IQR
                 Q1 = np.percentile(sensor_data, 25)
                 Q3 = np.percentile(sensor_data, 75)
                 IQR = Q3 - Q1
-                
-                # Define outliers as observations that fall below Q1 - 1.5*IQR or above Q3 + 1.5*IQR
                 outlier_condition = (sensor_data < (Q1 - 1.5 * IQR)) | (sensor_data > (Q3 + 1.5 * IQR))
-                
-                # Identify outliers
                 outliers = np.where(outlier_condition)[0]
                 outliers = outliers[outliers < len(self.ethercat_numbers)]
                 outlier_wheels = [self.ethercat_wheel_map.get(self.ethercat_numbers[i], self.ethercat_numbers[i]) for i in outliers]
-
+                all_outlier_wheels.extend(outlier_wheels)
                 print(f"Outlier wheels for sensor {sensor}: {outlier_wheels}")
+        if not all_outlier_wheels:  # Check if the list is empty
+            print("No outlier wheels detected.")
+            return None  # or return a suitable value
+        most_common_wheel = max(set(all_outlier_wheels), key = all_outlier_wheels.count)
+        return most_common_wheel
+
 
 
 
