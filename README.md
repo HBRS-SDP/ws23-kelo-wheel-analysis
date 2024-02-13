@@ -9,7 +9,7 @@ WS23 Kelo Wheel Analysis is a Python library and command-line tool designed to a
 ### Prerequisites
 
 - Python  3.x (ensure you have the correct version installed)
-- Required Python packages (list them here)
+- libraries listed on https://robile-amr.readthedocs.io/en/rolling/getting_started.html
 
 ### Installation Steps
 1. Follow the instructions: https://robile-amr.readthedocs.io/en/rolling/getting_started.html
